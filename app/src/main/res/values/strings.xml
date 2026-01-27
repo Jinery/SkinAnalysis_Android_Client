@@ -1,0 +1,34 @@
+<resources>
+    <string name="app_name">SkinAnalysis</string>
+
+    <string name="missing_message">Message missing</string>
+    <string name="registration_failed">Registration Failed</string>
+    <string name="session_expired">Session expired</string>
+    <string name="failed_to_save">Failed to save</string>
+
+    <string name="message_not_found_in_response">Message not found in response</string>
+    <string name="empty_response_body">Empty response body</string>
+
+    <string name="error_timeout">Timeout</string>
+    <string name="error_network">Network error. Check your connection</string>
+    <string name="error_no_internet">No connection to internet</string>
+    <string name="error_ssl">Connection security error</string>
+    <string name="error_unknown">Error: %s</string>
+
+    <string name="error_bad_request">Bad request</string>
+    <string name="error_unauthorized">Authorization required</string>
+    <string name="error_forbidden">Access denied</string>
+    <string name="error_not_found">Resource not found</string>
+    <string name="error_too_many_requests">Too many requests. Try again later</string>
+    <string name="error_client">Client error: %s</string>
+    <string name="error_server">Server error: %s</string>
+    <string name="error_http_unknown">HTTP error: %s</string>
+
+    <!-- FOR COMPOSE -->
+    <string name="enter_connection_id">Enter the Connection ID</string>
+    <string name="get_key_in_tg_bot">Get it in the Telegram bot</string>
+    <string name="id_from_bot">ID from the bot</string>
+    <string name="get_started">Get started</string>
+    <string name="wait_analysis">Analysis... Wait</string>
+    <string name="authorization_error">Authorization error. Please re-login to the app</string>
+</resources>

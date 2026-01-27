@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SkinAnalysis</string>
+
+    <string name="missing_message">Сообщение отсутствует</string>
+    <string name="registration_failed">Регистрация не удалась</string>
+    <string name="session_expired">Сессия истекла</string>
+    <string name="failed_to_save">Ошибка при сохранении</string>
+
+    <string name="message_not_found_in_response">Сообщение не найдено в ответе</string>
+    <string name="empty_response_body">Пустое тело ответа</string>
+
+    <string name="error_timeout">Превышено время ожидания</string>
+    <string name="error_network">Ошибка сети. Проверьте подключение</string>
+    <string name="error_no_internet">Нет подключения к интернету</string>
+    <string name="error_ssl">Ошибка безопасности соединения</string>
+    <string name="error_unknown">Ошибка: %s</string>
+
+    <string name="error_bad_request">Неверный запрос</string>
+    <string name="error_unauthorized">Требуется авторизация</string>
+    <string name="error_forbidden">Доступ запрещен</string>
+    <string name="error_not_found">Ресурс не найден</string>
+    <string name="error_too_many_requests">Слишком много запросов. Попробуйте позже</string>
+    <string name="error_client">Ошибка клиента: %s</string>
+    <string name="error_server">Ошибка сервера: %s</string>
+    <string name="error_http_unknown">HTTP ошибка: %s</string>
+
+    <!-- FOR COMPOSE -->
+    <string name="enter_connection_id">Введите Connection ID</string>
+    <string name="get_key_in_tg_bot">Получите его в Telegram боте</string>
+    <string name="id_from_bot">ID из бота</string>
+    <string name="get_started">Начать работу</string>
+    <string name="wait_analysis">Анализ... Подождите</string>
+    <string name="authorization_error">Ошибка авторизации. Перезайдите в приложение</string>
+</resources>
