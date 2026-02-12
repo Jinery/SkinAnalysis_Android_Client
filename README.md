@@ -22,7 +22,7 @@ Android client for skin condition analysis. Users can select images from the gal
 ### 📥 Installation
 1. **Clone the repository**
 ```bash
-git clone [https://github.com/Jinery/foodadvisor-ai.git
+git clone [https://github.com/Jinery/SkinAnalysis_Android_Client.git
 ```
 2. **Open in Android Studio**
 * Launch Android Studio
