@@ -3,15 +3,14 @@ package com.kychnoo.skinanalysis_android_client.provider
 import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.Settings
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-@SuppressLint("StaticFieldLeak")
-object DeviceIdProvider {
-    private lateinit var context: Context
-
-    fun init(context: Context) {
-        this.context = context.applicationContext
-    }
-
+@Singleton
+class DeviceIdProvider @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
     @SuppressLint("HardwareIds")
     fun getDeviceId(): String {
         return Settings.Secure.getString(

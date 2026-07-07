@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.kychnoo.skinanalysis_android_client.data.model.SnackbarType
+import com.kychnoo.skinanalysis_android_client.data.model.types.SnackbarType
 
 @Composable
 fun CustomSnackbar(data: SnackbarData, type: SnackbarType) {

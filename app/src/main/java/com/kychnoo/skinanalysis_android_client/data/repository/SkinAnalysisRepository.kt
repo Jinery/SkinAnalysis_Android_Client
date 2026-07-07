@@ -10,21 +10,25 @@ import com.kychnoo.skinanalysis_android_client.data.model.response.TaskResponse
 import com.kychnoo.skinanalysis_android_client.data.remote.ApiService
 import com.kychnoo.skinanalysis_android_client.provider.AndroidResourceProvider
 import com.kychnoo.skinanalysis_android_client.provider.DeviceIdProvider
+import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.io.IOException
+import javax.inject.Inject
 
-class SkinAnalysisRepository(
+class SkinAnalysisRepository @Inject constructor(
     private val apiService: ApiService,
-    private val resources: AndroidResourceProvider
-    ) {
+    private val deviceIdProvider: DeviceIdProvider,
+    private val resources: AndroidResourceProvider,
+    @ApplicationContext private val context: Context,
+) {
 
-    suspend fun analyzeImage(context: Context, imageUri: Uri): Result<String> {
+    suspend fun analyzeImage(imageUri: Uri): Result<String> {
         return try {
-            val file = imageUri.toFile(context) // Convert uri to file.
-            if (file == null) return Result.failure(Exception("File is null"))
+            val file = imageUri.toFile(context)
+                ?: return Result.failure(Exception("File is null")) // Convert uri to file.
             val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull()) // Convert file to request body as image media type.
 
             val imagePart = MultipartBody.Part.createFormData("file", file.name, requestFile) // Create multipart request.
@@ -107,7 +111,7 @@ class SkinAnalysisRepository(
         return try {
             val request = DeviceRegisterRequest( // Create new Device Register Request.
                 platform = platform, // Set the platform.
-                deviceUid = DeviceIdProvider.getDeviceId(), // Get device uid from device provider and set here.
+                deviceUid = deviceIdProvider.getDeviceId(), // Get device uid from device provider and set here.
                 name = deviceName, // Set the device name.
                 model = Build.MODEL, // Set the device model.
                 osVersion = Build.VERSION.RELEASE, // Set the Android version.

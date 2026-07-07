@@ -2,12 +2,16 @@ package com.kychnoo.skinanalysis_android_client.provider
 
 import android.content.Context
 import com.kychnoo.skinanalysis_android_client.R
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import javax.inject.Inject
 import javax.net.ssl.SSLHandshakeException
 
-class AndroidResourceProvider(private val context: Context) : ResourceProvider {
+class AndroidResourceProvider @Inject constructor(
+    @ApplicationContext private val context: Context
+) : ResourceProvider {
     override fun getString(resId: Int): String = context.getString(resId)
     override fun getString(resId: Int, vararg args: Any): String = context.getString(resId, *args)
 

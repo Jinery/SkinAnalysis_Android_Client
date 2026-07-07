@@ -1,17 +1,21 @@
+import com.android.build.api.dsl.ApplicationExtension
+
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.devtools.ksp")
+    id("com.google.dagger.hilt.android")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
-android {
+configure<ApplicationExtension> {
     namespace = "com.kychnoo.skinanalysis_android_client"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.kychnoo.skinanalysis_android_client"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -19,7 +23,7 @@ android {
     }
 
     buildTypes {
-        release {
+        getByName("release") {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -28,17 +32,18 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
-        }
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
         viewBinding=true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -71,7 +76,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
 
     // Camera X
     implementation(libs.camera.core)
@@ -83,6 +87,14 @@ dependencies {
 
     // Source: https://mvnrepository.com/artifact/com.squareup.retrofit2/converter-gson
     implementation(libs.converter.gson)
+
+    // Hilt.
+    implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.hilt.android)
+
+
+    // Ksp.
+    ksp(libs.hilt.android.compiler)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

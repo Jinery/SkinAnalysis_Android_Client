@@ -1,62 +1,95 @@
 package com.kychnoo.skinanalysis_android_client.ui.viewmodel
 
-import android.content.Context
 import android.net.Uri
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kychnoo.skinanalysis_android_client.R
 import com.kychnoo.skinanalysis_android_client.data.DataStoreManager
+import com.kychnoo.skinanalysis_android_client.data.manager.snackbar.SnackbarManager
 import com.kychnoo.skinanalysis_android_client.data.model.TaskStatus
+import com.kychnoo.skinanalysis_android_client.data.model.states.AnalysisUiState
+import com.kychnoo.skinanalysis_android_client.data.model.types.SnackbarType
 import com.kychnoo.skinanalysis_android_client.data.repository.SkinAnalysisRepository
+import com.kychnoo.skinanalysis_android_client.provider.ResourceProvider
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import kotlin.time.Duration.Companion.seconds
 
-class AnalysisViewModel(
-    private val dataStoreManager: DataStoreManager,
-    private val repository: SkinAnalysisRepository
-) : ViewModel() {
-    var imageUri by mutableStateOf<Uri?>(value = null)
-    var analysisResultUrl by mutableStateOf<String?>(null)
-    var isAnalysing by mutableStateOf(false)
+@HiltViewModel
+class AnalysisViewModel @Inject constructor(
+    dataStoreManager: DataStoreManager,
+    private val repository: SkinAnalysisRepository,
+    private val resources: ResourceProvider,
+    snackbarManager: SnackbarManager
+) : ViewModel(), SnackbarManager by snackbarManager {
+    private val _uiState: MutableStateFlow<AnalysisUiState> = MutableStateFlow(AnalysisUiState())
 
+    val uiState: StateFlow<AnalysisUiState> = combine(
+        _uiState,
+        dataStoreManager.getConnectionIdFlow
+    ) { state, connectionId -> state.copy(connectionId = connectionId)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = AnalysisUiState()
+    )
 
-    val connectionIdState: StateFlow<String?> = dataStoreManager.getConnectionIdFlow
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
-        )
-
-    fun uploadAndAnalyse(context: Context, uri: Uri) {
-        imageUri = uri
-        isAnalysing = true
+    fun uploadAndAnalyse(uri: Uri) {
+        _uiState.update { it.copy(imageUri = uri, isAnalysing = true) }
 
         viewModelScope.launch {
-            val uploadResult = repository.analyzeImage(context, uri)
+            val uploadResult = repository.analyzeImage(uri)
             uploadResult.onSuccess { taskId ->
                 pollTaskStatus(taskId)
-            }.onFailure {
-                isAnalysing = false
+            }.onFailure { th ->
+                showSnackbar(th.message ?: resources.getString(R.string.missing_message), SnackbarType.ERROR)
+                _uiState.update { it.copy(isAnalysing = false) }
             }
         }
     }
 
     private suspend fun pollTaskStatus(taskId: String) {
-        var completed = false
-        while (!completed) {
+        var attempts = 0
+        val maxAttempts = 30
+
+        while (attempts < maxAttempts) {
             val status = repository.getTaskStatus(taskId)
-            if (status.getOrNull()?.status == TaskStatus.COMPLETED) {
-                val result = repository.getTaskResult(taskId)
-                analysisResultUrl = result.getOrNull()?.imageUrl
-                completed = true
-                isAnalysing = false
+            status.onSuccess { taskResponse ->
+                when (taskResponse.status) {
+                    TaskStatus.COMPLETED -> {
+                        val result = repository.getTaskResult(taskId)
+                        result.onSuccess { analysisRes ->
+                            _uiState.update { it.copy(analysisResultUrl = analysisRes.imageUrl, isAnalysing = false) }
+                        }.onFailure { th ->
+                            showSnackbar(th.message ?: resources.getString(R.string.missing_message), SnackbarType.ERROR)
+                        }
+                        return
+                    }
+                    TaskStatus.FAILED -> {
+                        showSnackbar(taskResponse.message, SnackbarType.ERROR)
+                        _uiState.update { it.copy(isAnalysing = false) }
+                        return
+                    }
+                    else -> { /*  Wait...  */ }
+                }
+            }.onFailure { th ->
+                showSnackbar(th.message ?: resources.getString(R.string.missing_message), SnackbarType.ERROR)
+                _uiState.update { it.copy(isAnalysing = false) }
+                return
             }
-            delay(2000)
+
+            attempts++
+            delay(2.seconds)
         }
+        showSnackbar(resources.getString(R.string.error_timeout), SnackbarType.ERROR)
+        _uiState.update { it.copy(isAnalysing = false) }
     }
 }

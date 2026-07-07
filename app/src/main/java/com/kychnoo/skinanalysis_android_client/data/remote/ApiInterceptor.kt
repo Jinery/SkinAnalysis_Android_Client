@@ -9,12 +9,13 @@ import java.util.Locale
 
 class ApiInterceptor(
     private val dataStoreManager: DataStoreManager,
+    private val deviceIdProvider: DeviceIdProvider,
     private var onAuthFailed: (() -> Unit)? = null
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
         val requestBuilder = original.newBuilder()
-            .header("X-Device-ID", DeviceIdProvider.getDeviceId()) // Add headers to builder.
+            .header("X-Device-ID", deviceIdProvider.getDeviceId()) // Add headers to builder.
             .header("Accept-Language", Locale.getDefault().language)
 
         runBlocking {

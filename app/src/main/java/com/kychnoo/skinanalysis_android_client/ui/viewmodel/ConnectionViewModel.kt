@@ -3,22 +3,28 @@ package com.kychnoo.skinanalysis_android_client.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kychnoo.skinanalysis_android_client.R
-import com.kychnoo.skinanalysis_android_client.data.model.ConnectionUiState
+import com.kychnoo.skinanalysis_android_client.data.manager.snackbar.SnackbarManager
+import com.kychnoo.skinanalysis_android_client.data.model.states.ConnectionUiState
+import com.kychnoo.skinanalysis_android_client.data.model.types.SnackbarType
 import com.kychnoo.skinanalysis_android_client.data.repository.ConnectionRepository
 import com.kychnoo.skinanalysis_android_client.data.repository.SkinAnalysisRepository
 import com.kychnoo.skinanalysis_android_client.provider.ResourceProvider
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class ConnectionViewModel(
+@HiltViewModel
+class ConnectionViewModel @Inject constructor(
     private val connectionRepository: ConnectionRepository,
     private val skinRepository: SkinAnalysisRepository,
-    private val resources: ResourceProvider
-) : ViewModel() {
+    private val resources: ResourceProvider,
+    snackbarManager: SnackbarManager
+) : ViewModel(), SnackbarManager by snackbarManager {
     private val _uiState = MutableStateFlow(ConnectionUiState())
     val uiState: StateFlow<ConnectionUiState> = _uiState.asStateFlow()
 
@@ -41,10 +47,10 @@ class ConnectionViewModel(
                 _uiState.update { it.copy(connectionId = id, isLoading = false, isSuccess = true) }
             }.onFailure { e ->
                 connectionRepository.clearConnectionId() // If result returns failure status, clear connection id.
+                showSnackbar(e.message ?: resources.getString(R.string.missing_message), SnackbarType.ERROR)
                 _uiState.update { it.copy(
                     connectionId = null,
-                    isLoading = false,
-                    error = e.message ?: resources.getString(R.string.missing_message)
+                    isLoading = false
                 ) }
             }
         }
@@ -52,20 +58,20 @@ class ConnectionViewModel(
 
     fun registerDevice(id: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, isSuccess = false) } // Set loading mode and update state.
+            _uiState.update { it.copy(isLoading = true, isSuccess = false) } // Set loading mode and update state.
             connectionRepository.saveConnectionId(id) // Save connection id(Tempolary).
 
             val result = skinRepository.registerDevice(id) // Send request for register device to api.
 
             result.onSuccess { newId ->
                 saveConnectionId(newId) // If result returns success, save connection id.
-                _uiState.update { it.copy(isLoading = false, connectionId = newId, error = null, isSuccess = true) }
+                _uiState.update { it.copy(isLoading = false, connectionId = newId, isSuccess = true) }
             }.onFailure { e ->
                 clearConnectionId() // Else clear connection id, return error result and update state.
+                showSnackbar(e.message ?: resources.getString(R.string.registration_failed), SnackbarType.ERROR)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = e.message ?: resources.getString(R.string.registration_failed),
                         connectionId = null,
                         isSuccess = false
                     )
@@ -80,11 +86,9 @@ class ConnectionViewModel(
             try {
                 connectionRepository.saveConnectionId(id)
             } catch (e: Exception) {
+                showSnackbar(e.message ?: resources.getString(R.string.failed_to_save), SnackbarType.ERROR)
                 _uiState.update {
-                    it.copy(
-                        error = e.message ?: resources.getString(R.string.failed_to_save),
-                        isLoading = false
-                    )
+                    it.copy(isLoading = false)
                 }
             }
         }
@@ -94,9 +98,5 @@ class ConnectionViewModel(
         viewModelScope.launch {
             connectionRepository.clearConnectionId()
         }
-    }
-
-    fun dismissError() {
-        _uiState.update { it.copy(error = null) }
     }
 }

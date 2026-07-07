@@ -6,13 +6,17 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
 val Context.dataStorage: DataStore<Preferences> by preferencesDataStore(name = "app_data")
 
-class DataStoreManager(private val context: Context) {
+class DataStoreManager @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
     companion object {
         val CONNECTION_ID_KEY = stringPreferencesKey("connection_id")
     }
