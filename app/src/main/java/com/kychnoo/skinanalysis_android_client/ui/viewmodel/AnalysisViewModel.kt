@@ -6,9 +6,9 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kychnoo.skinanalysis_android_client.R
-import com.kychnoo.skinanalysis_android_client.data.DataStoreManager
 import com.kychnoo.skinanalysis_android_client.data.manager.snackbar.SnackbarManager
 import com.kychnoo.skinanalysis_android_client.data.model.TaskStatus
+import com.kychnoo.skinanalysis_android_client.data.model.events.NavigationEvent
 import com.kychnoo.skinanalysis_android_client.data.model.states.AnalysisUiState
 import com.kychnoo.skinanalysis_android_client.data.model.states.analyse.ScreenAnalysisState
 import com.kychnoo.skinanalysis_android_client.data.model.types.SnackbarType
@@ -17,11 +17,15 @@ import com.kychnoo.skinanalysis_android_client.data.repository.ConnectionReposit
 import com.kychnoo.skinanalysis_android_client.data.repository.SkinAnalysisRepository
 import com.kychnoo.skinanalysis_android_client.provider.ResourceProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -32,19 +36,20 @@ import kotlin.time.Duration.Companion.seconds
 class AnalysisViewModel @Inject constructor(
     private val analysisRepository: SkinAnalysisRepository,
     private val cameraRepository: CameraRepository,
-    connectionRepository: ConnectionRepository,
+    private val connectionRepository: ConnectionRepository,
     private val resourceProvider: ResourceProvider,
     snackbarManager: SnackbarManager
 ) : ViewModel(), SnackbarManager by snackbarManager {
     private val _screenState: MutableStateFlow<ScreenAnalysisState> = MutableStateFlow(ScreenAnalysisState())
 
+    private val _navigationEvent = Channel<NavigationEvent>(Channel.BUFFERED)
+    val navigationEvent: Flow<NavigationEvent> = _navigationEvent.receiveAsFlow()
+
     val uiState: StateFlow<AnalysisUiState> = combine(
         _screenState,
         cameraRepository.cameraState,
-        connectionRepository.getConnectionIdAsFlow(),
-    ) { screenState, cameraState, connectionId ->
+    ) { screenState, cameraState ->
         AnalysisUiState(
-            connectionId = connectionId,
             screenState = screenState,
             cameraState = cameraState
         )
@@ -53,6 +58,21 @@ class AnalysisViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = AnalysisUiState()
     )
+
+    init {
+        checkConnectionId()
+    }
+
+    private fun checkConnectionId() {
+        viewModelScope.launch {
+            connectionRepository.getConnectionIdAsFlow()
+                .collect { connectionId ->
+                    if (connectionId.isNullOrBlank()) {
+                        _navigationEvent.send(NavigationEvent.NavigateToConnectionScreen)
+                    }
+                }
+        }
+    }
 
     fun uploadAndAnalyse(uri: Uri) {
         _screenState.update { it.copy(imageUri = uri, isAnalysing = true) }

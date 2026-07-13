@@ -4,6 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -90,7 +94,13 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     NavHost(
                         navController = navController,
-                        startDestination = ConnectionScreenRoute // Start screen is connection screen.
+                        startDestination = ConnectionScreenRoute, // Start screen is connection screen.
+                        popEnterTransition = {
+                            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400))
+                        },
+                        popExitTransition = {
+                            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
+                        }
                     ) {
                         composable<ConnectionScreenRoute> { // Route for navigation to connection screen.
                             ConnectionScreen(
@@ -100,6 +110,9 @@ class MainActivity : ComponentActivity() {
                         }
                         composable<MainScreenRoute> { // Route for navigation to main screen.
                             MainScreen(
+                                onAuthExpired = {
+                                    navController.navigateUp()
+                                },
                                 modifier = Modifier.padding(innerPadding)
                             )
                         }

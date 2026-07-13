@@ -5,7 +5,6 @@ import com.kychnoo.skinanalysis_android_client.data.model.states.analyse.ScreenA
 import com.kychnoo.skinanalysis_android_client.data.model.states.camera.CameraState
 
 data class AnalysisUiState(
-    val connectionId: String? = null,
     val screenState: ScreenAnalysisState = ScreenAnalysisState(),
     val cameraState: CameraState = CameraState()
 )

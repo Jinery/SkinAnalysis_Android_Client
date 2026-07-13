@@ -60,6 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import coil3.compose.AsyncImage
 import com.kychnoo.skinanalysis_android_client.R
+import com.kychnoo.skinanalysis_android_client.data.model.events.NavigationEvent
 import com.kychnoo.skinanalysis_android_client.data.model.results.permissions.PermissionsResult
 import com.kychnoo.skinanalysis_android_client.data.model.types.SnackbarType
 import com.kychnoo.skinanalysis_android_client.data.remote.ApiService.Companion.BASE_URL
@@ -75,6 +76,7 @@ object MainScreenRoute
 
 @Composable
 fun MainScreen(
+    onAuthExpired: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: AnalysisViewModel = hiltViewModel()
 ) {
@@ -123,6 +125,14 @@ fun MainScreen(
     BackHandler {
         if (uiState.screenState.analysisResultUrl != null) {
             viewModel.dropState()
+        }
+    }
+
+    LaunchedEffect(viewModel.navigationEvent) {
+        viewModel.navigationEvent.collect { event ->
+            when (event) {
+                NavigationEvent.NavigateToConnectionScreen -> onAuthExpired()
+            }
         }
     }
 
