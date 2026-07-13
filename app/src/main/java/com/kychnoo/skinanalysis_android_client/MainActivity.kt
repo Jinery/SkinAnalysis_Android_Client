@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
                                 onAuthExpired = {
                                     navController.navigateUp()
                                 },
-                                modifier = Modifier.padding(innerPadding)
+                                innerPadding = innerPadding
                             )
                         }
                     }

@@ -16,12 +16,18 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -68,6 +74,7 @@ import com.kychnoo.skinanalysis_android_client.ui.permissions.rememberPermission
 import com.kychnoo.skinanalysis_android_client.ui.theme.Snow
 import com.kychnoo.skinanalysis_android_client.ui.viewmodel.AnalysisViewModel
 import com.kychnoo.skinanalysis_android_client.ui.widgets.CameraBottomMenu
+import com.kychnoo.skinanalysis_android_client.ui.widgets.CameraSideMenu
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
@@ -77,6 +84,7 @@ object MainScreenRoute
 @Composable
 fun MainScreen(
     onAuthExpired: () -> Unit,
+    innerPadding: PaddingValues,
     modifier: Modifier = Modifier,
     viewModel: AnalysisViewModel = hiltViewModel()
 ) {
@@ -101,8 +109,8 @@ fun MainScreen(
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) {
-        uri: Uri? -> uri?.let { viewModel.uploadAndAnalyse(it) }
+    ) { uri: Uri? ->
+        uri?.let { viewModel.uploadAndAnalyse(it) }
     }
 
     val previewView = remember {
@@ -147,57 +155,118 @@ fun MainScreen(
         }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(.65F)
-                .align(Alignment.Center)
-                .offset(y = (-64).dp)
-        ) {
-            val currentScreenState = uiState.screenState
-            if ((currentScreenState.isAnalysing && currentScreenState.imageUri != null) || currentScreenState.analysisResultUrl != null) {
-                AnalysisImage(
-                    imageUri = currentScreenState.analysisResultUrl ?: currentScreenState.imageUri!!,
-                    statusMessage = currentScreenState.statusMessage,
-                    isAnalysing = currentScreenState.isAnalysing,
-                )
-            } else {
-                AndroidView(
-                    factory = { previewView },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(16.dp))
-                        .graphicsLayer(scaleX = scaleX)
-                )
-            }
-        }
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val isLandscape = maxWidth > maxHeight
+        val isTablet = maxWidth > 600.dp
 
-        AnimatedVisibility(
-            visible = !uiState.screenState.isAnalysing && uiState.screenState.analysisResultUrl.isNullOrBlank(),
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 52.dp)
-        ) {
-            CameraBottomMenu(
-                onToggleCameraClick = {
-                    viewModel.switchCamera(lifecycleOwner, previewView)
-                },
-                onShotClick = {
-                    if (permissionsManager.isPermissionGranted(permissions.first())) {
-                        viewModel.takePhoto()
+        val currentScreenState = uiState.screenState
+
+        if (isLandscape) {
+            Box(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(.65F)
+                        .align(Alignment.Center)
+                        .offset(x = (-64).dp)
+                ) {
+                    if ((currentScreenState.isAnalysing && currentScreenState.imageUri != null) || currentScreenState.analysisResultUrl != null) {
+                        AnalysisImage(
+                            imageUri = currentScreenState.analysisResultUrl
+                                ?: currentScreenState.imageUri!!,
+                            statusMessage = currentScreenState.statusMessage,
+                            isAnalysing = currentScreenState.isAnalysing,
+                        )
                     } else {
-                        viewModel.handleCameraPermissionDenied()
-                        permissionsManager.requestPermissions()
+                        AndroidView(
+                            factory = { previewView },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(16.dp))
+                                .graphicsLayer(scaleX = scaleX)
+                        )
                     }
-                },
-                onGalleryClick = { launcher.launch("image/*") }
-            )
+                }
+
+                AnimatedVisibility(
+                    visible = !uiState.screenState.isAnalysing && uiState.screenState.analysisResultUrl.isNullOrBlank(),
+                    enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+                    exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 52.dp)
+                ) {
+                    CameraSideMenu(
+                        onToggleCameraClick = {
+                            viewModel.switchCamera(lifecycleOwner, previewView)
+                        },
+                        onShotClick = {
+                            if (permissionsManager.isPermissionGranted(permissions.first())) {
+                                viewModel.takePhoto()
+                            } else {
+                                viewModel.handleCameraPermissionDenied()
+                                permissionsManager.requestPermissions()
+                            }
+                        },
+                        onGalleryClick = { launcher.launch("image/*") }
+                    )
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(if (isTablet) 0.8F else .65F)
+                        .align(Alignment.Center)
+                        .offset(y = if (isTablet) (-64).dp else (-90).dp)
+                ) {
+                    if ((currentScreenState.isAnalysing && currentScreenState.imageUri != null) || currentScreenState.analysisResultUrl != null) {
+                        AnalysisImage(
+                            imageUri = currentScreenState.analysisResultUrl
+                                ?: currentScreenState.imageUri!!,
+                            statusMessage = currentScreenState.statusMessage,
+                            isAnalysing = currentScreenState.isAnalysing,
+                        )
+                    } else {
+                        AndroidView(
+                            factory = { previewView },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(16.dp))
+                                .graphicsLayer(scaleX = scaleX)
+                        )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = !uiState.screenState.isAnalysing && uiState.screenState.analysisResultUrl.isNullOrBlank(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = if (isTablet) 40.dp else 52.dp)
+                ) {
+                    CameraBottomMenu(
+                        onToggleCameraClick = {
+                            viewModel.switchCamera(lifecycleOwner, previewView)
+                        },
+                        onShotClick = {
+                            if (permissionsManager.isPermissionGranted(permissions.first())) {
+                                viewModel.takePhoto()
+                            } else {
+                                viewModel.handleCameraPermissionDenied()
+                                permissionsManager.requestPermissions()
+                            }
+                        },
+                        onGalleryClick = { launcher.launch("image/*") }
+                    )
+                }
+            }
         }
     }
 }

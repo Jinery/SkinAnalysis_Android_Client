@@ -2,6 +2,7 @@ package com.kychnoo.skinanalysis_android_client.data.camera
 
 import android.content.ContentValues
 import android.content.Context
+import android.hardware.display.DisplayManager
 import android.net.Uri
 import android.provider.MediaStore
 import android.view.Surface
@@ -41,6 +42,8 @@ class CameraManager(
     private val cameraExecutor: Executor = Executors.newSingleThreadExecutor()
     private var luminosityAnalyzer: LuminosityAnalyzer? = null
     private var imageCapture: ImageCapture? = null
+
+    private var displayListener: DisplayManager.DisplayListener? = null
 
     /**
      * Initialize camera with selected camera selector.
@@ -116,6 +119,25 @@ class CameraManager(
         imageCapture = ImageCapture.Builder()
             .setTargetRotation(previewView.display.rotation)
             .build()
+
+        val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+
+        displayListener?.let { displayManager.unregisterDisplayListener(it) }
+
+        displayListener = object : DisplayManager.DisplayListener {
+            override fun onDisplayAdded(displayId: Int) {}
+            override fun onDisplayRemoved(displayId: Int) {}
+            override fun onDisplayChanged(displayId: Int) {
+                val display = previewView.display ?: return
+                if (displayId == display.displayId) {
+                    val rotation = display.rotation
+                    imageCapture?.targetRotation = rotation
+                    preview?.targetRotation = rotation
+                }
+            }
+        }
+
+        displayManager.registerDisplayListener(displayListener, null)
 
         luminosityAnalyzer = LuminosityAnalyzer { luminosity ->
             _cameraState.value = _cameraState.value.copy(
@@ -202,6 +224,11 @@ class CameraManager(
      */
     fun shutdown() {
         cameraProvider?.unbindAll()
+        displayListener?.let { listener ->
+            val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+            displayManager.unregisterDisplayListener(listener)
+            displayListener = null
+        }
         _cameraState.value = _cameraState.value.copy(
             isPreviewActive = false,
             isCameraInitialized = false
