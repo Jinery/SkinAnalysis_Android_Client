@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import com.kychnoo.skinanalysis_android_client.R
+import com.kychnoo.skinanalysis_android_client.data.DataStoreManager
 import com.kychnoo.skinanalysis_android_client.data.model.request.DeviceRegisterRequest
 import com.kychnoo.skinanalysis_android_client.data.model.response.AnalysisResponse
 import com.kychnoo.skinanalysis_android_client.data.model.response.TaskResponse
@@ -22,6 +23,7 @@ class SkinAnalysisRepository @Inject constructor(
     private val apiService: ApiService,
     private val deviceIdProvider: DeviceIdProvider,
     private val resources: AndroidResourceProvider,
+    private val dataStoreManager: DataStoreManager,
     @ApplicationContext private val context: Context,
 ) {
 
@@ -39,6 +41,7 @@ class SkinAnalysisRepository @Inject constructor(
                 Result.success(response.body()?.taskId ?: "") // Get task id if successfully response.
             } else {
                 val message = resources.getHttpErrorMessage(response.code())
+                if (response.code() == 403) dataStoreManager.clearConnectionId()
                 Result.failure(Exception(message)) // Else return error message.
             }
         } catch (e: Exception) {
@@ -54,6 +57,7 @@ class SkinAnalysisRepository @Inject constructor(
                 Result.success(response.body()!!) // Get body if response is successfully.
             } else {
                 val message = resources.getHttpErrorMessage(response.code())
+                if (response.code() == 403) dataStoreManager.clearConnectionId()
                 Result.failure(Exception(message))
             }
         } catch (e: Exception) {
@@ -69,6 +73,7 @@ class SkinAnalysisRepository @Inject constructor(
                 Result.success(response.body()!!) // Get body if response is successfully.
             } else {
                 val message = resources.getHttpErrorMessage(response.code())
+                if (response.code() == 403) dataStoreManager.clearConnectionId()
                 Result.failure(Exception(message))
             }
 
@@ -91,6 +96,7 @@ class SkinAnalysisRepository @Inject constructor(
                         Result.failure(Exception(resources.getString(R.string.message_not_found_in_response)))
                     }
                 } else {
+                    if (response.code() == 403) dataStoreManager.clearConnectionId()
                     Result.failure(Exception(resources.getString(R.string.empty_response_body)))
                 }
             } else {

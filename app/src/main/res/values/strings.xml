@@ -24,6 +24,9 @@
     <string name="error_server">Server error: %s</string>
     <string name="error_http_unknown">HTTP error: %s</string>
 
+    <string name="error_camera_not_initialized">Camera not initialized</string>
+    <string name="camera_error">Camera error</string>
+
     <!-- FOR COMPOSE -->
     <string name="enter_connection_id">Enter the Connection ID</string>
     <string name="get_key_in_tg_bot">Get it in the Telegram bot</string>

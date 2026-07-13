@@ -1,10 +1,11 @@
 package com.kychnoo.skinanalysis_android_client.data.model.states
 
 import android.net.Uri
+import com.kychnoo.skinanalysis_android_client.data.model.states.analyse.ScreenAnalysisState
+import com.kychnoo.skinanalysis_android_client.data.model.states.camera.CameraState
 
 data class AnalysisUiState(
-    val imageUri: Uri? = null,
-    val analysisResultUrl: String? = null,
-    val isAnalysing: Boolean = false,
-    val connectionId: String? = null
+    val connectionId: String? = null,
+    val screenState: ScreenAnalysisState = ScreenAnalysisState(),
+    val cameraState: CameraState = CameraState()
 )

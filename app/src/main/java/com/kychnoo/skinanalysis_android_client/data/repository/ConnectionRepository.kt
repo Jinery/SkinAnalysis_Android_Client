@@ -13,11 +13,7 @@ class ConnectionRepository @Inject constructor(
         dataStoreManager.saveConnectionId(id)
     }
 
-    fun getConnectionId(): Flow<String?> {
+    fun getConnectionIdAsFlow(): Flow<String?> {
         return dataStoreManager.getConnectionIdFlow
-    }
-
-    suspend fun clearConnectionId() {
-        dataStoreManager.clearConnectionId()
     }
 }

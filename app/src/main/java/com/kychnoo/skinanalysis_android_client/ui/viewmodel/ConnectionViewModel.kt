@@ -13,7 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -29,30 +29,39 @@ class ConnectionViewModel @Inject constructor(
     val uiState: StateFlow<ConnectionUiState> = _uiState.asStateFlow()
 
     init {
-        loadInitialId()
+        observeConnectionId()
     }
 
-    private fun loadInitialId() { // Load id and check secure endpoint on starting application.
+    private fun observeConnectionId() {
         viewModelScope.launch {
-            val id = connectionRepository.getConnectionId().firstOrNull() // Get connection id from connect repository.
-            if (id == null) {
-                _uiState.update { it.copy(isLoading = false) } // If connection id is null update the state.
-                return@launch // Exit from the function.
-            }
+            connectionRepository.getConnectionIdAsFlow()
+                .onStart {
+                    _uiState.update { it.copy(isLoading = false) }
+                }
+                .collect { id ->
+                    _uiState.update { it.copy(connectionId = id) }
+                    if (id == null) {
+                        _uiState.update { it.copy(isLoading = false) }
+                    } else {
+                        checkEndpoint()
+                    }
+                }
+        }
+    }
 
-            _uiState.update { it.copy(isLoading = true) } // Update state and set isLoading variable.
-            val result = skinRepository.checkSecureEndpoint() // Send request for check secure endpoint to api.
+    private suspend fun checkEndpoint() { // Check secure endpoint on starting application.
+        _uiState.update { it.copy(isLoading = true) }
 
-            result.onSuccess { message ->
-                _uiState.update { it.copy(connectionId = id, isLoading = false, isSuccess = true) }
-            }.onFailure { e ->
-                connectionRepository.clearConnectionId() // If result returns failure status, clear connection id.
-                showSnackbar(e.message ?: resources.getString(R.string.missing_message), SnackbarType.ERROR)
-                _uiState.update { it.copy(
-                    connectionId = null,
-                    isLoading = false
-                ) }
-            }
+        val result = skinRepository.checkSecureEndpoint() // Send request for check secure endpoint to api.
+
+        result.onSuccess { _ ->
+            _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+        }.onFailure { e ->
+            showSnackbar(
+                e.message ?: resources.getString(R.string.missing_message),
+                SnackbarType.ERROR
+            )
+            _uiState.update { it.copy(isLoading = false) }
         }
     }
 
@@ -65,14 +74,11 @@ class ConnectionViewModel @Inject constructor(
 
             result.onSuccess { newId ->
                 saveConnectionId(newId) // If result returns success, save connection id.
-                _uiState.update { it.copy(isLoading = false, connectionId = newId, isSuccess = true) }
             }.onFailure { e ->
-                clearConnectionId() // Else clear connection id, return error result and update state.
                 showSnackbar(e.message ?: resources.getString(R.string.registration_failed), SnackbarType.ERROR)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        connectionId = null,
                         isSuccess = false
                     )
                 }
@@ -80,23 +86,18 @@ class ConnectionViewModel @Inject constructor(
         }
     }
 
-    fun saveConnectionId(id: String) { // Function to save connection id with update state.
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            try {
-                connectionRepository.saveConnectionId(id)
-            } catch (e: Exception) {
-                showSnackbar(e.message ?: resources.getString(R.string.failed_to_save), SnackbarType.ERROR)
-                _uiState.update {
-                    it.copy(isLoading = false)
-                }
+    private suspend fun saveConnectionId(id: String) { // Function to save connection id with update state.
+        _uiState.update { it.copy(isLoading = true) }
+        try {
+            connectionRepository.saveConnectionId(id)
+        } catch (e: Exception) {
+            showSnackbar(
+                e.message ?: resources.getString(R.string.failed_to_save),
+                SnackbarType.ERROR
+            )
+            _uiState.update {
+                it.copy(isLoading = false)
             }
-        }
-    }
-
-    fun clearConnectionId() {
-        viewModelScope.launch {
-            connectionRepository.clearConnectionId()
         }
     }
 }

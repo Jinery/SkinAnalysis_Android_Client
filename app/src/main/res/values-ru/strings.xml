@@ -25,6 +25,9 @@
     <string name="error_server">Ошибка сервера: %s</string>
     <string name="error_http_unknown">HTTP ошибка: %s</string>
 
+    <string name="error_camera_not_initialized">Камера не инициализирована</string>
+    <string name="camera_error">Ошибка камеры</string>
+
     <!-- FOR COMPOSE -->
     <string name="enter_connection_id">Введите Connection ID</string>
     <string name="get_key_in_tg_bot">Получите его в Telegram боте</string>

@@ -92,7 +92,7 @@ fun ConnectionScreen(
 
         LaunchedEffect(state.isSuccess) {
             if (state.isSuccess) {
-                onSuccess() // If state if success send callback.
+                onSuccess() // If state is success then send callback.
             }
         }
     }
