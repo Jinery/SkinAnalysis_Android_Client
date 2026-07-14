@@ -1,22 +1,31 @@
 package com.kychnoo.skinanalysis_android_client.ui.viewmodel
 
 import android.net.Uri
+import androidx.camera.view.PreviewView
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kychnoo.skinanalysis_android_client.R
-import com.kychnoo.skinanalysis_android_client.data.DataStoreManager
 import com.kychnoo.skinanalysis_android_client.data.manager.snackbar.SnackbarManager
 import com.kychnoo.skinanalysis_android_client.data.model.TaskStatus
+import com.kychnoo.skinanalysis_android_client.data.model.events.NavigationEvent
 import com.kychnoo.skinanalysis_android_client.data.model.states.AnalysisUiState
+import com.kychnoo.skinanalysis_android_client.data.model.states.analyse.ScreenAnalysisState
 import com.kychnoo.skinanalysis_android_client.data.model.types.SnackbarType
+import com.kychnoo.skinanalysis_android_client.data.repository.CameraRepository
+import com.kychnoo.skinanalysis_android_client.data.repository.ConnectionRepository
 import com.kychnoo.skinanalysis_android_client.data.repository.SkinAnalysisRepository
 import com.kychnoo.skinanalysis_android_client.provider.ResourceProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -25,34 +34,111 @@ import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 class AnalysisViewModel @Inject constructor(
-    dataStoreManager: DataStoreManager,
-    private val repository: SkinAnalysisRepository,
-    private val resources: ResourceProvider,
+    private val analysisRepository: SkinAnalysisRepository,
+    private val cameraRepository: CameraRepository,
+    private val connectionRepository: ConnectionRepository,
+    private val resourceProvider: ResourceProvider,
     snackbarManager: SnackbarManager
 ) : ViewModel(), SnackbarManager by snackbarManager {
-    private val _uiState: MutableStateFlow<AnalysisUiState> = MutableStateFlow(AnalysisUiState())
+    private val _screenState: MutableStateFlow<ScreenAnalysisState> = MutableStateFlow(ScreenAnalysisState())
+
+    private val _navigationEvent = Channel<NavigationEvent>(Channel.BUFFERED)
+    val navigationEvent: Flow<NavigationEvent> = _navigationEvent.receiveAsFlow()
 
     val uiState: StateFlow<AnalysisUiState> = combine(
-        _uiState,
-        dataStoreManager.getConnectionIdFlow
-    ) { state, connectionId -> state.copy(connectionId = connectionId)
+        _screenState,
+        cameraRepository.cameraState,
+    ) { screenState, cameraState ->
+        AnalysisUiState(
+            screenState = screenState,
+            cameraState = cameraState
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = AnalysisUiState()
     )
 
+    init {
+        checkConnectionId()
+    }
+
+    private fun checkConnectionId() {
+        viewModelScope.launch {
+            connectionRepository.getConnectionIdAsFlow()
+                .collect { connectionId ->
+                    if (connectionId.isNullOrBlank()) {
+                        _navigationEvent.send(NavigationEvent.NavigateToConnectionScreen)
+                    }
+                }
+        }
+    }
+
     fun uploadAndAnalyse(uri: Uri) {
-        _uiState.update { it.copy(imageUri = uri, isAnalysing = true) }
+        _screenState.update { it.copy(imageUri = uri, isAnalysing = true) }
 
         viewModelScope.launch {
-            val uploadResult = repository.analyzeImage(uri)
+            val uploadResult = analysisRepository.analyzeImage(uri)
             uploadResult.onSuccess { taskId ->
                 pollTaskStatus(taskId)
             }.onFailure { th ->
-                showSnackbar(th.message ?: resources.getString(R.string.missing_message), SnackbarType.ERROR)
-                _uiState.update { it.copy(isAnalysing = false) }
+                showSnackbar(th.message ?: resourceProvider.getString(R.string.missing_message), SnackbarType.ERROR)
+                _screenState.update { it.copy(isAnalysing = false) }
             }
+
+            cameraRepository.deletePhoto(uri)
+        }
+    }
+
+    fun initializeCamera(
+        lifecycleOwner: LifecycleOwner,
+        previewView: PreviewView
+    ) {
+        cameraRepository.initializeCamera(lifecycleOwner, previewView)
+    }
+
+    fun switchCamera(
+        lifecycleOwner: LifecycleOwner,
+        previewView: PreviewView
+    ) {
+        cameraRepository.switchCamera(lifecycleOwner, previewView)
+    }
+
+    fun takePhoto() {
+        viewModelScope.launch {
+            if (uiState.value.cameraState.isDarkCondition) {
+                showSnackbar(resourceProvider.getString(R.string.snackbar_alert_low_brightness), SnackbarType.INFO)
+            }
+        }
+        cameraRepository.takePhoto(
+            onPhotoTaken = { uri ->
+                uploadAndAnalyse(uri)
+            },
+            onError = { th ->
+                viewModelScope.launch {
+                    showSnackbar(
+                        th.message ?: resourceProvider.getString(R.string.camera_error),
+                        SnackbarType.ERROR
+                    )
+                }
+            }
+        )
+    }
+
+    fun clearCamera() {
+        cameraRepository.shutdown()
+    }
+
+    override fun onCleared() {
+        clearCamera()
+    }
+
+    fun handleCameraPermissionDenied() {
+        viewModelScope.launch {
+            showSnackbar(
+                resourceProvider.getString(R.string.need_camera_access),
+                SnackbarType.INFO
+            )
         }
     }
 
@@ -61,35 +147,42 @@ class AnalysisViewModel @Inject constructor(
         val maxAttempts = 30
 
         while (attempts < maxAttempts) {
-            val status = repository.getTaskStatus(taskId)
+            val status = analysisRepository.getTaskStatus(taskId)
             status.onSuccess { taskResponse ->
                 when (taskResponse.status) {
                     TaskStatus.COMPLETED -> {
-                        val result = repository.getTaskResult(taskId)
+                        val result = analysisRepository.getTaskResult(taskId)
                         result.onSuccess { analysisRes ->
-                            _uiState.update { it.copy(analysisResultUrl = analysisRes.imageUrl, isAnalysing = false) }
+                            if (analysisRes.imageUrl == null) {
+                                showSnackbar(analysisRes.message, SnackbarType.INFO)
+                            }
+                            _screenState.update { it.copy(analysisResultUrl = analysisRes.imageUrl, isAnalysing = false) }
                         }.onFailure { th ->
-                            showSnackbar(th.message ?: resources.getString(R.string.missing_message), SnackbarType.ERROR)
+                            showSnackbar(th.message ?: resourceProvider.getString(R.string.missing_message), SnackbarType.ERROR)
                         }
                         return
                     }
                     TaskStatus.FAILED -> {
                         showSnackbar(taskResponse.message, SnackbarType.ERROR)
-                        _uiState.update { it.copy(isAnalysing = false) }
+                        _screenState.update { it.copy(isAnalysing = false) }
                         return
                     }
                     else -> { /*  Wait...  */ }
                 }
             }.onFailure { th ->
-                showSnackbar(th.message ?: resources.getString(R.string.missing_message), SnackbarType.ERROR)
-                _uiState.update { it.copy(isAnalysing = false) }
+                showSnackbar(th.message ?: resourceProvider.getString(R.string.missing_message), SnackbarType.ERROR)
+                _screenState.update { it.copy(isAnalysing = false) }
                 return
             }
 
             attempts++
             delay(2.seconds)
         }
-        showSnackbar(resources.getString(R.string.error_timeout), SnackbarType.ERROR)
-        _uiState.update { it.copy(isAnalysing = false) }
+        showSnackbar(resourceProvider.getString(R.string.error_timeout), SnackbarType.ERROR)
+        _screenState.update { it.copy(isAnalysing = false) }
+    }
+
+    fun dropState() {
+        _screenState.update { it.copy(isAnalysing = false, analysisResultUrl = null) }
     }
 }
