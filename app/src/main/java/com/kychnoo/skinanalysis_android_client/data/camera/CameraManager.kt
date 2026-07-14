@@ -1,5 +1,6 @@
 package com.kychnoo.skinanalysis_android_client.data.camera
 
+import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.hardware.display.DisplayManager
@@ -21,6 +22,7 @@ import com.kychnoo.skinanalysis_android_client.data.model.states.camera.CameraSt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
@@ -176,7 +178,7 @@ class CameraManager(
      * Take photo from current camera.
      */
     fun takePhoto(
-        onPhotoTaken: (ByteArray, Uri) -> Unit,
+        onPhotoTaken: (Uri) -> Unit,
         onError: (Exception) -> Unit,
     ) {
          camera ?: run {
@@ -189,14 +191,8 @@ class CameraManager(
             return
         }
 
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(
-            context.contentResolver,
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, "SkA_IMG_${System.currentTimeMillis()}.jpg")
-                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            }
-        ).build()
+        val imageFile = File(context.cacheDir, "SkA_IMG_${System.currentTimeMillis()}.jpg")
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(imageFile).build()
 
         imageCapture.takePicture(
             outputOptions,
@@ -205,9 +201,7 @@ class CameraManager(
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     val uri = outputFileResults.savedUri
                     uri?.let {
-                        context.contentResolver.openInputStream(it)?.use { stream ->
-                            onPhotoTaken(stream.readBytes(), uri)
-                        }
+                        onPhotoTaken(it)
                     }
                 }
 
@@ -217,6 +211,18 @@ class CameraManager(
                 }
             }
         )
+    }
+
+    fun deletePhoto(uri: Uri) {
+        try {
+            if (uri.scheme == ContentResolver.SCHEME_FILE) {
+                uri.path?.let { File(it).delete() }
+            } else {
+                context.contentResolver.delete(uri, null, null)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     /**
@@ -236,6 +242,6 @@ class CameraManager(
     }
 
     companion object {
-        private const val DARK_THRESHOLD = 100.0
+        private const val DARK_THRESHOLD = 50.0
     }
 }

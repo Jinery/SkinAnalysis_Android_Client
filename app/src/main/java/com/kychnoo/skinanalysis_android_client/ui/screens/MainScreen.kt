@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -73,6 +74,7 @@ import com.kychnoo.skinanalysis_android_client.data.remote.ApiService.Companion.
 import com.kychnoo.skinanalysis_android_client.ui.permissions.rememberPermissionsManager
 import com.kychnoo.skinanalysis_android_client.ui.theme.Snow
 import com.kychnoo.skinanalysis_android_client.ui.viewmodel.AnalysisViewModel
+import com.kychnoo.skinanalysis_android_client.ui.viewmodel.alerts.LowBrightnessAlert
 import com.kychnoo.skinanalysis_android_client.ui.widgets.CameraBottomMenu
 import com.kychnoo.skinanalysis_android_client.ui.widgets.CameraSideMenu
 import kotlinx.coroutines.launch
@@ -140,6 +142,7 @@ fun MainScreen(
         viewModel.navigationEvent.collect { event ->
             when (event) {
                 NavigationEvent.NavigateToConnectionScreen -> onAuthExpired()
+                else -> {  }
             }
         }
     }
@@ -187,6 +190,18 @@ fun MainScreen(
                                 .clip(RoundedCornerShape(16.dp))
                                 .graphicsLayer(scaleX = scaleX)
                         )
+
+                        AnimatedVisibility(
+                            visible = uiState.cameraState.isDarkCondition,
+                            enter = slideInVertically() + scaleIn() + fadeIn(),
+                            exit = slideOutVertically() + scaleOut() + fadeOut(),
+                            modifier = Modifier
+                                .fillMaxWidth(.6F)
+                                .align(Alignment.TopCenter)
+                                .padding(top = 6.dp)
+                        ) {
+                            LowBrightnessAlert()
+                        }
                     }
                 }
 
@@ -242,6 +257,18 @@ fun MainScreen(
                                 .clip(RoundedCornerShape(16.dp))
                                 .graphicsLayer(scaleX = scaleX)
                         )
+
+                        AnimatedVisibility(
+                            visible = uiState.cameraState.isDarkCondition,
+                            enter = slideInVertically() + scaleIn() + fadeIn(),
+                            exit = slideOutVertically() + scaleOut() + fadeOut(),
+                            modifier = Modifier
+                                .fillMaxWidth(.6F)
+                                .align(Alignment.TopCenter)
+                                .padding(top = 6.dp)
+                        ) {
+                            LowBrightnessAlert()
+                        }
                     }
                 }
 

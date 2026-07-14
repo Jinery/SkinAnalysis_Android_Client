@@ -85,6 +85,8 @@ class AnalysisViewModel @Inject constructor(
                 showSnackbar(th.message ?: resourceProvider.getString(R.string.missing_message), SnackbarType.ERROR)
                 _screenState.update { it.copy(isAnalysing = false) }
             }
+
+            cameraRepository.deletePhoto(uri)
         }
     }
 
@@ -103,8 +105,13 @@ class AnalysisViewModel @Inject constructor(
     }
 
     fun takePhoto() {
+        viewModelScope.launch {
+            if (uiState.value.cameraState.isDarkCondition) {
+                showSnackbar(resourceProvider.getString(R.string.snackbar_alert_low_brightness), SnackbarType.INFO)
+            }
+        }
         cameraRepository.takePhoto(
-            onPhotoTaken = { _, uri ->
+            onPhotoTaken = { uri ->
                 uploadAndAnalyse(uri)
             },
             onError = { th ->
@@ -129,7 +136,7 @@ class AnalysisViewModel @Inject constructor(
     fun handleCameraPermissionDenied() {
         viewModelScope.launch {
             showSnackbar(
-                "To take a photo, we need access to the camera. Please grant access through the settings.",
+                resourceProvider.getString(R.string.need_camera_access),
                 SnackbarType.INFO
             )
         }

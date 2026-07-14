@@ -28,6 +28,11 @@
     <string name="error_camera_not_initialized">Камера не инициализирована</string>
     <string name="camera_error">Ошибка камеры</string>
 
+    <string name="low_brightness">Низкая яркость</string>
+    <string name="snackbar_alert_low_brightness">Низкая яркость сделанного фото, результат может быть неточен</string>
+
+    <string name="need_camera_access">Чтобы сделать фотографию, нам нужен доступ к камере. Пожалуйста, предоставьте доступ в настройках</string>
+
     <!-- FOR COMPOSE -->
     <string name="enter_connection_id">Введите Connection ID</string>
     <string name="get_key_in_tg_bot">Получите его в Telegram боте</string>

@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         composable<ConnectionScreenRoute> { // Route for navigation to connection screen.
                             ConnectionScreen(
-                                modifier = Modifier.padding(innerPadding),
+                                innerPadding = innerPadding,
                                 onSuccess = { navController.navigate(MainScreenRoute) }
                             )
                         }

@@ -1,5 +1,6 @@
 package com.kychnoo.skinanalysis_android_client.data.repository
 
+import android.content.ContentResolver
 import android.net.Uri
 import androidx.camera.core.CameraSelector
 import androidx.camera.view.PreviewView
@@ -7,6 +8,7 @@ import androidx.lifecycle.LifecycleOwner
 import com.kychnoo.skinanalysis_android_client.data.camera.CameraManager
 import com.kychnoo.skinanalysis_android_client.data.model.states.camera.CameraState
 import kotlinx.coroutines.flow.StateFlow
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,8 +35,12 @@ class CameraRepository @Inject constructor(
         cameraManager.switchCamera(lifecycleOwner, previewView)
     }
 
-    fun takePhoto(onPhotoTaken: (ByteArray, Uri) -> Unit, onError: (Exception) -> Unit) {
+    fun takePhoto(onPhotoTaken: (Uri) -> Unit, onError: (Exception) -> Unit) {
         cameraManager.takePhoto(onPhotoTaken, onError)
+    }
+
+    fun deletePhoto(uri: Uri) {
+        cameraManager.deletePhoto(uri)
     }
 
     fun shutdown() {
